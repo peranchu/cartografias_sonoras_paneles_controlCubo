@@ -1,7 +1,16 @@
 /*
-    CARTOGRAFÍAS SONORAS
-    Honorino Garcia Mayo 2025
-    Dibuja en Pantalla la brujula
+              _ _______
+    /\        | |__   __|
+   /  \   _ __| |_ | | ___  ___
+  / /\ \ | '__| __|| |/ _ \/ __|
+ / ____ \| |  | |_ | |  __/ (__
+/_/    \_\_|   \__||_|\___|\___|
+
+CARTOGRAFÍAS SONORAS
+Honorino García Mayo 2025
+
+Panel Principal de control: POSICIÓN y MODO
+Lectura del Magnetómetro QMC5883L
 */
 
 #include <Arduino.h>
