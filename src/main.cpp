@@ -123,6 +123,8 @@ void loop()
 
       LecturaBotones();
 
+      EnvioGranular(rumboContinuo);
+
       // Dibujo Pantalla
       u8g2.clearBuffer();
       u8g2.firstPage();

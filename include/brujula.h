@@ -22,8 +22,53 @@ QMC5883LCompass compass; // Magnetómetro
 
 int LecturaCompass = 0;
 
+// PARAMS ENVIO RUMBO
+unsigned long PTimeCompass = 0;
+unsigned long timerCompass = 0;
+int TimeOutCompass = 300;
+int UmbralCompass = 1;
+bool MovimientoCompass = true;
+
+int rumboPrevio = 0;
+int varCompass = 0;
+/////////////////////
+
+// Envio posicion compas Granular
+void EnvioGranular(int rumboGranular)
+{
+  varCompass = abs(rumboGranular - rumboPrevio);
+
+  if (varCompass > UmbralCompass)
+  {
+    PTimeCompass = millis();
+  }
+  timerCompass = millis() - PTimeCompass;
+
+  if (timerCompass < TimeOutCompass)
+  {
+    MovimientoCompass = true;
+  }
+  else
+  {
+    MovimientoCompass = false;
+  }
+
+  if(MovimientoCompass == true)
+  {
+    OSCMessage Rumbo("/rumbo");
+    Rumbo.add(int(rumboGranular));
+    Udp.beginPacket(outIP, outPort);
+    Rumbo.send(Udp);
+    Udp.endPacket();
+    Rumbo.empty();
+
+    rumboPrevio = rumboGranular;
+  }
+}
+
 // LECTURA BRÚJULA
-int LecturaRumbo(){
+int LecturaRumbo()
+{
   int x, y, z;
   int acimut;
   compass.read();
