@@ -9,12 +9,17 @@
 CARTOGRAFÍAS SONORAS
 Honorino García Mayo 2025
 
-Panel Principal de control: POSICIÓN y MODO
+Panel Principal de control: POSICIÓN - MODO - VELOCIDAD - PICH
+"pantalla.h":
 Manejo Pantalla MODO Continuo - Granular
+Pantalla Inicio - Conexión
+
+Pantalla I2C SSD1309 128x64
 */
 
 #include <U8g2lib.h>
 #include <Wire.h>
+#include "esp32utils.h"
 // SSD1309 128x64
 // SDA 21
 // SCL 22
@@ -256,137 +261,214 @@ const char *compass_labels[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"}
 // Dibujo Brújula - speed - Pitch
 void drawCompass(int compass_degrees, int speed, int pitch)
 {
-  xpos_offset = round((360 - compass_degrees) / 360.0 * 240.0); // calculate the X offset for all the tickmarks, max offset is 10(px)*24(tickmarks) = 240px
+    xpos_offset = round((360 - compass_degrees) / 360.0 * 240.0); // calculate the X offset for all the tickmarks, max offset is 10(px)*24(tickmarks) = 240px
 
-  u8g2.clearBuffer();    // clear the internal memory
-  u8g2.setDrawColor(1);  // set the drawing color to white
-  u8g2.setBitmapMode(1); // draw transparent images
+    u8g2.clearBuffer();    // clear the internal memory
+    u8g2.setDrawColor(1);  // set the drawing color to white
+    u8g2.setBitmapMode(1); // draw transparent images
 
-  for (int i = 0; i < 24; i++)
-  { // go over all 24 tickmarks
+    for (int i = 0; i < 24; i++)
+    { // go over all 24 tickmarks
 
-    xpos_with_offset = (64 + (i * 10) + xpos_offset) % 240; // calculate the x offset for all tickmarks, do not go over 240px
+        xpos_with_offset = (64 + (i * 10) + xpos_offset) % 240; // calculate the x offset for all tickmarks, do not go over 240px
 
-    if (xpos_with_offset > 2 && xpos_with_offset < 128)
-    { // only draw tickmarks that are inside the visible area (display width is 128px)
+        if (xpos_with_offset > 2 && xpos_with_offset < 128)
+        { // only draw tickmarks that are inside the visible area (display width is 128px)
 
-      // adjust the position using the power function
-      if (xpos_with_offset < 64)
-      {
-        xpos_final = xpos_with_offset / 64.0;                   // convert 0-64 into 0-1 range to work nicely with the power function
-        xpos_final = pow(xpos_final, 2.5);                      // add easing by having the power function, tweak the exponent for different result
-        label_display = round(xpos_final * 1.0 * labels_count); // calculate which scaled label to show based on the x position
-        xpos_final = xpos_final * 64.0;                         // convert 0-1 back into 0-64 (left side of the screen)
-      }
-      else
-      {
-        xpos_final = (128 - xpos_with_offset) / 64.0;           // convert 0-64 into 0-1 range to work nicely with the power function
-        xpos_final = pow(xpos_final, 2.5);                      // add easing by having the power function, tweak the exponent for different result
-        label_display = round(xpos_final * 1.0 * labels_count); // calculate which scaled label to show based on the x position
-        xpos_final = (64 - (xpos_final * 64.0)) + 64;           // convert 1-0 back into 64-128 (right side of the screen)
-      }
+            // adjust the position using the power function
+            if (xpos_with_offset < 64)
+            {
+                xpos_final = xpos_with_offset / 64.0;                   // convert 0-64 into 0-1 range to work nicely with the power function
+                xpos_final = pow(xpos_final, 2.5);                      // add easing by having the power function, tweak the exponent for different result
+                label_display = round(xpos_final * 1.0 * labels_count); // calculate which scaled label to show based on the x position
+                xpos_final = xpos_final * 64.0;                         // convert 0-1 back into 0-64 (left side of the screen)
+            }
+            else
+            {
+                xpos_final = (128 - xpos_with_offset) / 64.0;           // convert 0-64 into 0-1 range to work nicely with the power function
+                xpos_final = pow(xpos_final, 2.5);                      // add easing by having the power function, tweak the exponent for different result
+                label_display = round(xpos_final * 1.0 * labels_count); // calculate which scaled label to show based on the x position
+                xpos_final = (64 - (xpos_final * 64.0)) + 64;           // convert 1-0 back into 64-128 (right side of the screen)
+            }
 
-      xpos_final = round(xpos_final); // round the final x position to integer value
+            xpos_final = round(xpos_final); // round the final x position to integer value
 
-      if (i % 3 == 0)
-      {                                               // if the tickmark number is divisible by 3 == this is the big tickmark, show also the label
-        u8g2.drawLine(xpos_final, 7, xpos_final, 15); // draw big tickmark line
+            if (i % 3 == 0)
+            {                                                 // if the tickmark number is divisible by 3 == this is the big tickmark, show also the label
+                u8g2.drawLine(xpos_final, 7, xpos_final, 15); // draw big tickmark line
 
-        // draw either scaled labels (images) or standard labels (u8g2 font)
-        if (SHOW_SCALED_LABEL == 0)
-        {                                                                      // standard label
-          str_width = u8g2.getStrWidth(compass_labels[i / 3]);                 // calculate the string width
-          u8g2.drawStr(xpos_final - str_width / 2, 24, compass_labels[i / 3]); // draw string
+                // draw either scaled labels (images) or standard labels (u8g2 font)
+                if (SHOW_SCALED_LABEL == 0)
+                {                                                                        // standard label
+                    str_width = u8g2.getStrWidth(compass_labels[i / 3]);                 // calculate the string width
+                    u8g2.drawStr(xpos_final - str_width / 2, 24, compass_labels[i / 3]); // draw string
+                }
+                else
+                {                                                                      // scaled label
+                    int bitmap_index = ((i / 3) * (labels_count + 1)) + label_display; // which version of the image to display
+                    int label_xpos = xpos_final - (26 / 2);                            // all the images have the same width, the x pos could be easily calculated
+                    if (xpos_final > (0 + 3) && xpos_final < (128 - 3))
+                    { // only draw labels if the x position is in certain range
+                        u8g2.drawXBMP(label_xpos, 10 + 7, 26, 12, character_bitmaps[bitmap_index]);
+                    }
+                }
+
+                if (label_display == labels_count)
+                { // if we are drawing the "widest" label, draw the tickmark as 2px line (instead of just 1px line)
+                    u8g2.drawLine(xpos_final - 1, 7 + 0, xpos_final - 1, 7 + 8);
+                }
+            }
+            else
+            {                                                 // small tickmark without any label
+                u8g2.drawLine(xpos_final, 7, xpos_final, 13); // draw tickmark
+            }
         }
-        else
-        {                                                                    // scaled label
-          int bitmap_index = ((i / 3) * (labels_count + 1)) + label_display; // which version of the image to display
-          int label_xpos = xpos_final - (26 / 2);                            // all the images have the same width, the x pos could be easily calculated
-          if (xpos_final > (0 + 3) && xpos_final < (128 - 3))
-          { // only draw labels if the x position is in certain range
-            u8g2.drawXBMP(label_xpos, 10 + 7, 26, 12, character_bitmaps[bitmap_index]);
-          }
-        }
-
-        if (label_display == labels_count)
-        { // if we are drawing the "widest" label, draw the tickmark as 2px line (instead of just 1px line)
-          u8g2.drawLine(xpos_final - 1, 7 + 0, xpos_final - 1, 7 + 8);
-        }
-      }
-      else
-      {                                               // small tickmark without any label
-        u8g2.drawLine(xpos_final, 7, xpos_final, 13); // draw tickmark
-      }
     }
-  }
 
-  u8g2.drawLine(0, 0, 127, 0);   // draw horizontal line
-  u8g2.drawLine(0, 32, 127, 32); // draw horizontal line
+    u8g2.drawLine(0, 0, 127, 0);   // draw horizontal line
+    u8g2.drawLine(0, 32, 127, 32); // draw horizontal line
 
-  u8g2.setCursor(26, 43);
-  u8g2.setFont(u8g2_font_6x10_tf);
-  u8g2.print("Granular Mode");
+    u8g2.setCursor(26, 43);
+    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.print("Granular Mode");
 
-  u8g2.setFont(u8g2_font_streamline_all_t); // iconos
-  u8g2.drawGlyph(3, 60, 0x01a5);
-  u8g2.drawGlyph(60, 64, 0x0244);
+    u8g2.setFont(u8g2_font_streamline_all_t); // iconos
+    u8g2.drawGlyph(3, 60, 0x01a5);
+    u8g2.drawGlyph(60, 64, 0x0244);
 
-  //Dibujo speed
-  u8g2.setFont(u8g2_font_squeezed_b7_tr);
-  u8g2.setCursor(30, 60);
-  u8g2.print("X");
-  u8g2.setCursor(40, 60);
-  u8g2.print(speed);
+    // Dibujo speed
+    u8g2.setFont(u8g2_font_squeezed_b7_tr);
+    u8g2.setCursor(30, 60);
+    u8g2.print("X");
+    u8g2.setCursor(40, 60);
+    u8g2.print(speed);
 
-  //Dibujo Pitch
-  u8g2.setCursor(95, 60);
-  u8g2.print(pitch);
+    // Dibujo Pitch
+    u8g2.setCursor(95, 60);
+    u8g2.print(pitch);
 
-  u8g2.setDrawColor(0);                                        // black color
-  u8g2.drawXBMP(51, 0, 26, 13, epd_bitmap_img_bubble_outline); // bubble outline
-  u8g2.setDrawColor(1);                                        // white color
-  u8g2.drawXBMP(51, 0, 26, 13, epd_bitmap_img_bubble_fill);    // bubble fill
+    u8g2.setDrawColor(0);                                        // black color
+    u8g2.drawXBMP(51, 0, 26, 13, epd_bitmap_img_bubble_outline); // bubble outline
+    u8g2.setDrawColor(1);                                        // white color
+    u8g2.drawXBMP(51, 0, 26, 13, epd_bitmap_img_bubble_fill);    // bubble fill
 
-  u8g2.setDrawColor(0);                        // black color
-  u8g2.setFontDirection(0);                    // normal font direction
-  u8g2.setFont(u8g2_font_squeezed_b7_tr);      // set font
-  sprintf(buffer, "%d'", compass_degrees);     // convert compass degree integer to string, add the ' symbol that (somehow) looks like degree symbol (degree symbol is not present in the font)
-  str_width = u8g2.getStrWidth(buffer);        // calculate the string width
-  u8g2.drawStr(64 - str_width / 2, 8, buffer); // draw centered string
+    u8g2.setDrawColor(0);                        // black color
+    u8g2.setFontDirection(0);                    // normal font direction
+    u8g2.setFont(u8g2_font_squeezed_b7_tr);      // set font
+    sprintf(buffer, "%d'", compass_degrees);     // convert compass degree integer to string, add the ' symbol that (somehow) looks like degree symbol (degree symbol is not present in the font)
+    str_width = u8g2.getStrWidth(buffer);        // calculate the string width
+    u8g2.drawStr(64 - str_width / 2, 8, buffer); // draw centered string
 
-  u8g2.sendBuffer(); // transfer internal memory to the display
+    u8g2.sendBuffer(); // transfer internal memory to the display
 }
 //// FIN DIBUJO COMPASS /////////////////
 
-//Pantalla Modo CONTINUO
+// Pantalla Modo CONTINUO
 void DibujoContinuo()
 {
-  u8g2_uint_t x;
+    u8g2_uint_t x;
 
-  u8g2.setDrawColor(1);
-  u8g2.setFont(u8g2_font_10x20_mr);
-  width = u8g2.getUTF8Width(text);
-  u8g2.setFontMode(0); // enable transparent mode, which is faster
+    u8g2.setDrawColor(1);
+    u8g2.setFont(u8g2_font_10x20_mr);
+    width = u8g2.getUTF8Width(text);
+    u8g2.setFontMode(0); // enable transparent mode, which is faster
 
-  u8g2.firstPage();
-  do
-  {
-    // draw the scrolling text at current offset
-    x = offset;
-    u8g2.setFont(u8g2_font_10x20_mr); // set the target font
-
+    u8g2.firstPage();
     do
-    {                             // repeated drawing of the scrolling text...
-      u8g2.drawUTF8(x, 30, text); // draw the scolling text
-      x += width;                 // add the pixel width of the scrolling text
-    } while (x < u8g2.getDisplayWidth()); // draw again until the complete display is filled
+    {
+        // draw the scrolling text at current offset
+        x = offset;
+        u8g2.setFont(u8g2_font_10x20_mr); // set the target font
 
-  } while (u8g2.nextPage());
+        do
+        {                               // repeated drawing of the scrolling text...
+            u8g2.drawUTF8(x, 30, text); // draw the scolling text
+            x += width;                 // add the pixel width of the scrolling text
+        } while (x < u8g2.getDisplayWidth()); // draw again until the complete display is filled
 
-  offset -= 10; // scroll by one pixel
-  if ((u8g2_uint_t)offset < (u8g2_uint_t)-width)
-    offset = 0; // start over again
+    } while (u8g2.nextPage());
 
-  delay(30);
+    offset -= 10; // scroll by one pixel
+    if ((u8g2_uint_t)offset < (u8g2_uint_t)-width)
+        offset = 0; // start over again
+
+    delay(30);
 }
 /// FIN PANTALLA MODO CONTINUO //////
+
+// Pantalla INICIO
+void PantallaInicio()
+{
+    u8g2.firstPage();
+    do
+    {
+        u8g2.setFont(u8g2_font_roentgen_nbp_tf);
+        u8g2.setCursor(6, 10);
+        u8g2.print("Cartografias");
+        u8g2.setCursor(26, 30);
+        u8g2.print("Sonoras");
+
+        u8g2.setFont(u8g2_font_streamline_map_navigation_t);
+        u8g2.drawGlyph(50, 62, 0x30);
+
+    } while (u8g2.nextPage());
+    delay(5000);
+}
+/////// FIN PANTALLA PRINCIPAL /////////////
+
+// Pantalla Conexión
+void PantallaConexion(String state)
+{
+    if (state == "conectado")
+    {
+        u8g2.firstPage();
+        do
+        {
+            u8g2.setFont(u8g2_font_streamline_hand_signs_t);
+            u8g2.drawGlyph(60, 26, 0x31);
+
+            u8g2.setFont(u8g2_font_roentgen_nbp_tf);
+            u8g2.setCursor(4, 40);
+            u8g2.print("Conexion:");
+            u8g2.setFont(u8g2_font_littlemissloudonbold_te);
+            u8g2.setCursor(10, 58);
+            u8g2.print(WiFi.localIP());
+
+        } while (u8g2.nextPage());
+        delay(3000);
+
+        u8g2.clearBuffer();
+        delay(100);
+    }
+    else if (state == "desconectado")
+    {
+        u8g2.firstPage();
+        do
+        {
+            u8g2.setFont(u8g2_font_streamline_interface_essential_wifi_t);
+            u8g2.drawGlyph(60, 26, 0x31);
+
+            u8g2.setFont(u8g2_font_roentgen_nbp_tf);
+            u8g2.setCursor(4, 40);
+            u8g2.print("Conexion:");
+            u8g2.setFont(u8g2_font_littlemissloudonbold_te);
+            u8g2.setCursor(20, 58);
+            u8g2.print(state);
+
+        } while (u8g2.nextPage());
+    }
+}
+///////// FIN PANTALLA CONEXIÓN ///////////
+
+/*
+  _____           _                         __ _              _____
+ / ____|         | |                       / _(_)            / ____|
+| |     __ _ _ __| |_ ___   __ _ _ __ __ _| |_ _  __ _ ___  | (___   ___  _ __   ___  _ __ __ _ ___
+| |    / _` | '__| __/ _ \ / _` | '__/ _` |  _| |/ _` / __|  \___ \ / _ \| '_ \ / _ \| '__/ _` / __|
+| |___| (_| | |  | || (_) | (_| | | | (_| | | | | (_| \__ \  ____) | (_) | | | | (_) | | | (_| \__ \
+ \_____\__,_|_|   \__\___/ \__, |_|  \__,_|_| |_|\__,_|___/ |_____/ \___/|_| |_|\___/|_|  \__,_|___/
+                            __/ |
+                           |___/
+
+ Honorino García Mayo 2025
+*/

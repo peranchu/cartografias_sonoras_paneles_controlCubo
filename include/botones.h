@@ -14,7 +14,6 @@ Control de los multiplexiores 74hc165 - 74hc595
 Control de los botones
 */
 
-
 #include <Arduino.h>
 #include <Shifter.h>
 #include <RoxMux.h>
@@ -28,23 +27,23 @@ int counterPlaySpeed = 0;
 int counterPitch = 0;
 
 #define MUX_TOTAL 1
-Rox74HC165<MUX_TOTAL> mux;   // Control multiplexor 74hc165
+Rox74HC165<MUX_TOTAL> mux; // Control multiplexor 74hc165
 
-//pines control Mux LED
+// pines control Mux LED
 #define SER_IN 5
 #define L_CLK 16
 #define CLK 17
 
 #define NUM_REGISTER 1 // 74HC595
 
-//pins for 74HC165
+// pins for 74HC165
 #define PIN_DATA 23 // pin 9 on 74HC165 (DATA)
 #define PIN_LOAD 19 // pin 1 on 74HC165 (LOAD)
 #define PIN_CLK 18  // pin 2 on 74HC165 (CLK))
 
 bool pinState[MUX_TOTAL * 8];
 
-//Almacena los estados de los botones y LED
+// Almacena los estados de los botones y LED
 bool estado_btn_act[8] = {false, false, false, false, false, false, false, false};
 bool estado_LED[8] = {false, false, false, false, false, false, false, false};
 
@@ -58,9 +57,9 @@ void LecturaModo()
 {
   mux.update();
 
-  buttons[4].update(mux.read(4), 50, LOW);  //elimina el bouncing
+  buttons[4].update(mux.read(4), 50, LOW); // elimina el bouncing
 
-  if (buttons[4].released())   //Al soltar el botón
+  if (buttons[4].released()) // Al soltar el botón
   {
     estado_btn_act[4] = 0;
     if (estado_btn_act[4] == 0 && estado_LED[4] == false)
@@ -70,6 +69,14 @@ void LecturaModo()
       estado_LED[4] = true;
 
       Modo = 1;
+
+      // Envío MODO GRANULAR 1
+      OSCMessage Mode("/mode");
+      Mode.add(int(Modo));
+      Udp.beginPacket(outIP, outPort);
+      Mode.send(Udp);
+      Udp.endPacket();
+      Mode.empty();
     }
     else
     {
@@ -78,12 +85,20 @@ void LecturaModo()
       estado_LED[4] = false;
 
       Modo = 0;
+
+      // Envío MODO GRANULAR 1
+      OSCMessage Mode("/mode");
+      Mode.add(int(Modo));
+      Udp.beginPacket(outIP, outPort);
+      Mode.send(Udp);
+      Udp.endPacket();
+      Mode.empty();
     }
   }
 }
 /////// FIN LECTURA BOTÓN MODO /////
 
-//Lectura Botones Joystick - Pitch - Stop
+// Lectura Botones Joystick - Pitch - Stop - MODE
 void LecturaBotones()
 {
   mux.update();
@@ -93,18 +108,21 @@ void LecturaBotones()
     buttons[i].update(mux.read(i), 50, LOW);
 
     // AL PULSAR
-    if (buttons[i].pressed())  //AL Pulsar
+    if (buttons[i].pressed()) // AL Pulsar
     {
       num_button = i;
 
       switch (num_button)
       {
       case 7: // Boton STOP AMARILLO
+      {
         Mux_LED.setPin(7, HIGH);
         Mux_LED.write();
-        break;
+      }
+      break;
 
       case 0: // Joystic arriba
+      {
         Mux_LED.setPin(0, HIGH);
         Mux_LED.setPin(1, LOW);
         Mux_LED.setPin(2, LOW);
@@ -112,10 +130,21 @@ void LecturaBotones()
         Mux_LED.write();
 
         counterPlaySpeed = 1;
-        //Serial.println(counterPlaySpeed);
-        break;
+
+        // Envío JOYSTICK ARRIBA
+        OSCMessage Joys("/joystick");
+        Joys.add(int(counterPlaySpeed));
+        Udp.beginPacket(outIP, outPort);
+        Joys.send(Udp);
+        Udp.endPacket();
+        Joys.empty();
+
+        // Serial.println(counterPlaySpeed);
+      }
+      break;
 
       case 1: // Joystic abajo
+      {
         Mux_LED.setPin(0, LOW);
         Mux_LED.setPin(1, HIGH);
         Mux_LED.setPin(2, LOW);
@@ -123,10 +152,20 @@ void LecturaBotones()
         Mux_LED.write();
 
         counterPlaySpeed = 0;
-        //Serial.println(counterPlaySpeed);
-        break;
+
+        // Envío JOYSTICK ABAJO
+        OSCMessage Joys("/joystick");
+        Joys.add(int(counterPlaySpeed));
+        Udp.beginPacket(outIP, outPort);
+        Joys.send(Udp);
+        Udp.endPacket();
+        Joys.empty();
+        // Serial.println(counterPlaySpeed);
+      }
+      break;
 
       case 2: // Joystic derecha
+      {
         Mux_LED.setPin(0, LOW);
         Mux_LED.setPin(1, LOW);
         Mux_LED.setPin(2, HIGH);
@@ -136,11 +175,21 @@ void LecturaBotones()
         if ((counterPlaySpeed > -3) && (counterPlaySpeed < 2))
         {
           counterPlaySpeed += 1;
-          //Serial.println(counterPlaySpeed);
+
+          // Envío JOYSTICK DERECHA
+          OSCMessage Joys("/joystick");
+          Joys.add(int(counterPlaySpeed));
+          Udp.beginPacket(outIP, outPort);
+          Joys.send(Udp);
+          Udp.endPacket();
+          Joys.empty();
+          // Serial.println(counterPlaySpeed);
         }
-        break;
+      }
+      break;
 
       case 3: // Joystic izquierda
+      {
         Mux_LED.setPin(0, LOW);
         Mux_LED.setPin(1, LOW);
         Mux_LED.setPin(2, LOW);
@@ -150,19 +199,32 @@ void LecturaBotones()
         if ((counterPlaySpeed > -2) && (counterPlaySpeed < 3))
         {
           counterPlaySpeed -= 1;
-          //Serial.println(counterPlaySpeed);
+
+          // Envío JOYSTICK IZQUIERDA
+          OSCMessage Joys("/joystick");
+          Joys.add(int(counterPlaySpeed));
+          Udp.beginPacket(outIP, outPort);
+          Joys.send(Udp);
+          Udp.endPacket();
+          Joys.empty();
+          // Serial.println(counterPlaySpeed);
         }
-        break;
+      }
+      break;
 
       case 5: // PITCH -1 AZUL
+      {
         Mux_LED.setPin(5, HIGH);
         Mux_LED.write();
-        break;
+      }
+      break;
 
       case 6: // PITCH +1 ROJO
+      {
         Mux_LED.setPin(6, HIGH);
         Mux_LED.write();
-        break;
+      }
+      break;
       }
     }
 
@@ -174,43 +236,77 @@ void LecturaBotones()
       switch (num_button)
       {
       case 7: // Boton Stop AMARILLO
-        Mux_LED.clear();  //Limpia los LED
+      {
+        Mux_LED.clear(); // Limpia los LED
         Mux_LED.write();
 
-        //Restaura estado boton MODE
+        // Restaura estado boton MODE
         estado_btn_act[4] = 0;
         estado_LED[4] = false;
 
         Modo = 0;
-        break;
+
+        // Envío BOTÓN STOP
+        OSCMessage btnStop("/mode");
+        btnStop.add(int(Modo));
+        Udp.beginPacket(outIP, outPort);
+        btnStop.send(Udp);
+        Udp.endPacket();
+        btnStop.empty();
+      }
+      break;
 
       case 5: // PITCH -1 AZUL
+      {
         Mux_LED.setPin(5, LOW);
         Mux_LED.write();
 
-        if((counterPitch > -8) && (counterPitch < 9)){
+        if ((counterPitch > -8) && (counterPitch < 9))
+        {
           counterPitch -= 1;
-          Serial.println(counterPitch);
+
+          // Envío BOTÓN PITCH -1
+          OSCMessage Pitch("/pitch");
+          Pitch.add(int(counterPitch));
+          Udp.beginPacket(outIP, outPort);
+          Pitch.send(Udp);
+          Udp.endPacket();
+          Pitch.empty();
+
+          // Serial.println(counterPitch);
         }
-        break;
+      }
+      break;
 
       case 6: // PITCH +1 ROJO
+      {
         Mux_LED.setPin(6, LOW);
         Mux_LED.write();
 
-         if((counterPitch > -9) && (counterPitch < 8)){
+        if ((counterPitch > -9) && (counterPitch < 8))
+        {
           counterPitch += 1;
-          Serial.println(counterPitch);
-        }
-        break;
 
-      //Joystick  Cambio estado LED
+          // Envío BOTÓN PITCH +1
+          OSCMessage Pitch("/pitch");
+          Pitch.add(int(counterPitch));
+          Udp.beginPacket(outIP, outPort);
+          Pitch.send(Udp);
+          Udp.endPacket();
+          Pitch.empty();
+
+          // Serial.println(counterPitch);
+        }
+      }
+      break;
+
+      // Joystick  Cambio estado LED
       case 0: // Joystic arriba
         Mux_LED.setPin(0, LOW);
         Mux_LED.setPin(1, LOW);
         Mux_LED.setPin(2, LOW);
         Mux_LED.setPin(3, LOW);
-        Mux_LED.write();  
+        Mux_LED.write();
         break;
 
       case 1: // Joystic abajo
@@ -218,34 +314,42 @@ void LecturaBotones()
         Mux_LED.setPin(1, LOW);
         Mux_LED.setPin(2, LOW);
         Mux_LED.setPin(3, LOW);
-        Mux_LED.write();  
-        break; 
-        
+        Mux_LED.write();
+        break;
+
       case 2: // Joystic derecha
         Mux_LED.setPin(0, LOW);
         Mux_LED.setPin(1, LOW);
         Mux_LED.setPin(2, LOW);
         Mux_LED.setPin(3, LOW);
-        Mux_LED.write();  
-        break;  
+        Mux_LED.write();
+        break;
 
       case 3: // Joystic izquierda
         Mux_LED.setPin(0, LOW);
         Mux_LED.setPin(1, LOW);
         Mux_LED.setPin(2, LOW);
         Mux_LED.setPin(3, LOW);
-        Mux_LED.write();  
-        break;  
+        Mux_LED.write();
+        break;
       }
     }
-    //Al mantener  Reset Pitch ROJO
-    else if(buttons[6].held())
+    // Al mantener  Reset Pitch ROJO
+    else if (buttons[6].held())
     {
       Mux_LED.setPin(6, LOW);
       Mux_LED.write();
       counterPitch = 0;
-      Serial.println(counterPitch);
 
+      // Envío BOTÓN PITCH ROJO RESET 0
+      OSCMessage Pitch("/pitch");
+      Pitch.add(int(counterPitch));
+      Udp.beginPacket(outIP, outPort);
+      Pitch.send(Udp);
+      Udp.endPacket();
+      Pitch.empty();
+
+      // Serial.println(counterPitch);
     }
   }
 }
@@ -260,3 +364,17 @@ void clearLED()
   Mux_LED.setPin(3, LOW);
   Mux_LED.write();
 }
+/////// FIN LIMPIEZA LEDS //////
+
+/*
+  _____           _                         __ _              _____
+ / ____|         | |                       / _(_)            / ____|
+| |     __ _ _ __| |_ ___   __ _ _ __ __ _| |_ _  __ _ ___  | (___   ___  _ __   ___  _ __ __ _ ___
+| |    / _` | '__| __/ _ \ / _` | '__/ _` |  _| |/ _` / __|  \___ \ / _ \| '_ \ / _ \| '__/ _` / __|
+| |___| (_| | |  | || (_) | (_| | | | (_| | | | | (_| \__ \  ____) | (_) | | | | (_) | | | (_| \__ \
+ \_____\__,_|_|   \__\___/ \__, |_|  \__,_|_| |_|\__,_|___/ |_____/ \___/|_| |_|\___/|_|  \__,_|___/
+                            __/ |
+                           |___/
+
+ Honorino García Mayo 2025
+*/

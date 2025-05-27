@@ -8,31 +8,30 @@
 
 CARTOGRAFÍAS SONORAS
 Honorino García Mayo 2025
-
-Panel Principal de control: POSICIÓN y MODO
-Lectura del Magnetómetro QMC5883L
+Panel Principal de control: POSICIÓN - MODO - VELOCIDAD - PICH
+"config.h"
+Configuración Comunicaciones
+SSID: PERANCHU
+PASS: TexucaLana72
+Ip 192.168.1.205
 */
 
 #include <Arduino.h>
-#include <Wire.h>
-#include <QMC5883LCompass.h>
-#include <U8g2lib.h>
+#include <WiFi.h>
+#include <WiFiUdp.h>
 
-QMC5883LCompass compass; // Magnetómetro
 
-int LecturaCompass = 0;
+const char *ssid = "PERANCHU";
+const char *password = "TexucaLana72";
 
-// LECTURA BRÚJULA
-int LecturaRumbo(){
-  int x, y, z;
-  int acimut;
-  compass.read();
-  acimut = compass.getAzimuth();
-  LecturaCompass = acimut;
+const IPAddress ip(192, 168, 1, 205);
+const IPAddress gateway(192, 168, 1, 1);
+const IPAddress subnet(255, 255, 255, 0);
 
-  return LecturaCompass;
-}
-/////////// FIN LECTURA BRÚJULA /////////////
+const IPAddress outIP(192, 168, 1, 100);  // IP Ordenador que recibe los datos
+const unsigned int outPort = 9999;
+const unsigned int localPort = 8888;
+
 
 /*
   _____           _                         __ _              _____
